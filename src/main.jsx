@@ -72,9 +72,12 @@ function HitColorsTool() {
 
   const random = () => {
     const next = randomPassingPair();
-    setPalette((colors) => colors.map((_, index) => (
-      index === selectedColor ? next.foreground : randomHex()
-    )));
+    setPalette((colors) => buildCompanionPalette(
+      next.foreground,
+      next.background,
+      colors.length,
+      selectedColor,
+    ));
     setBackground(next.background);
   };
 
@@ -99,8 +102,7 @@ function HitColorsTool() {
   const addCompanionColor = () => {
     setPalette((colors) => {
       if (colors.length >= 5) return colors;
-      const base = hexToHsl(colors[0]);
-      const next = hslToHex((base.h + 150 + colors.length * 30) % 360, base.s, base.l);
+      const next = buildCompanionColor(colors[0], background, colors.length);
       setSelectedColor(colors.length);
       return [...colors, next];
     });
@@ -174,7 +176,7 @@ function HitColorsTool() {
                 return (
                   <div
                     className={`palette-row ${index === selectedColor ? 'selected' : ''}`}
-                    key={`${color}-${index}`}
+                    key={`companion-${index}`}
                   >
                     <div
                       className="palette-select"
@@ -331,6 +333,30 @@ function randomPassingPair() {
     : { foreground: '#FFFFFF', background: '#111111' };
 }
 
+function buildCompanionPalette(foreground, background, count, selectedIndex) {
+  return Array.from({ length: count }, (_, index) => (
+    index === selectedIndex
+      ? foreground
+      : buildCompanionColor(foreground, background, index)
+  ));
+}
+
+function buildCompanionColor(seed, background, index) {
+  if (!isValidHex(seed) || !isValidHex(background)) return seed;
+
+  const base = hexToHsl(seed);
+  const offsets = [0, 32, -38, 154, -154];
+  const saturations = [base.s, base.s + 2, base.s - 6, base.s - 10, base.s + 4];
+  const lightness = [base.l, base.l + 4, base.l - 4, base.l + 8, base.l - 8];
+  const next = hslToHex(
+    wrapHue(base.h + offsets[index % offsets.length]),
+    clamp(saturations[index % saturations.length], 42, 96),
+    clamp(lightness[index % lightness.length], 18, 82),
+  );
+
+  return nudgeToContrast(next, background, 4.5);
+}
+
 function nudgeToContrast(color, background, target) {
   if (!isValidHex(color) || !isValidHex(background)) return color;
 
@@ -346,6 +372,14 @@ function nudgeToContrast(color, background, target) {
   }
 
   return color;
+}
+
+function wrapHue(value) {
+  return ((value % 360) + 360) % 360;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function formatHex(value) {
