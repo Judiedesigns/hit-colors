@@ -112,6 +112,12 @@ function HitColorsTool() {
     setSelectedColor((current) => (current >= index ? Math.max(0, current - 1) : current));
   };
 
+  const fixCompanionColor = (index) => {
+    setPalette((colors) => colors.map((color, colorIndex) => (
+      colorIndex === index ? nudgeToContrast(color, background, 4.5) : color
+    )));
+  };
+
   return (
     <main className="contrast-shell">
       <style>{`::selection { color: ${background}; background-color: ${foreground}; }`}</style>
@@ -160,40 +166,58 @@ function HitColorsTool() {
               </button>
             </div>
             <div className="palette-list">
-              {palette.map((color, index) => (
-                <div
-                  className={`palette-row ${index === selectedColor ? 'selected' : ''}`}
-                  key={`${color}-${index}`}
-                >
+              {palette.map((color, index) => {
+                const rowRatio = contrast(color, background);
+                const rowLabel = badgeLabel(rowRatio);
+                const canFix = rowLabel === 'Fail';
+
+                return (
                   <div
-                    className="palette-select"
-                    onClick={() => setSelectedColor(index)}
+                    className={`palette-row ${index === selectedColor ? 'selected' : ''}`}
+                    key={`${color}-${index}`}
                   >
-                    <span style={{ backgroundColor: color }} />
-                    <input
-                      value={formatHex(color)}
-                      autoComplete="off"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck="false"
-                      onFocus={() => setSelectedColor(index)}
-                      onChange={(event) => updatePaletteColor(index, event.target.value)}
-                    />
+                    <div
+                      className="palette-select"
+                      onClick={() => setSelectedColor(index)}
+                    >
+                      <span style={{ backgroundColor: color }} />
+                      <input
+                        value={formatHex(color)}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                        onFocus={() => setSelectedColor(index)}
+                        onChange={(event) => updatePaletteColor(index, event.target.value)}
+                      />
+                    </div>
+                    <span className={`palette-grade ${rowRatio >= 3 ? 'passing' : 'failing'}`}>
+                      {rowLabel}
+                    </span>
+                    <button
+                      type="button"
+                      className="palette-fix"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        fixCompanionColor(index);
+                      }}
+                      disabled={!canFix}
+                      aria-label={`Fix ${formatHex(color)} contrast`}
+                    >
+                      Fix
+                    </button>
+                    <button
+                      type="button"
+                      className="palette-remove"
+                      onClick={() => removeCompanionColor(index)}
+                      disabled={index === 0}
+                      aria-label={`Remove accent ${index}`}
+                    >
+                      -
+                    </button>
                   </div>
-                  <span className={`palette-grade ${contrast(color, background) >= 3 ? 'passing' : 'failing'}`}>
-                    {badgeLabel(contrast(color, background))}
-                  </span>
-                  <button
-                    type="button"
-                    className="palette-remove"
-                    onClick={() => removeCompanionColor(index)}
-                    disabled={index === 0}
-                    aria-label={`Remove accent ${index}`}
-                  >
-                    -
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </aside>
@@ -205,34 +229,62 @@ function HitColorsTool() {
 function HitColorControl({ label, value, onChange }) {
   const normalized = normalizeHex(value);
   const hsl = hexToHsl(normalized);
+  const canUseEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
 
   const updateHsl = (key, nextValue) => {
     const next = { ...hsl, [key]: Number(nextValue) };
     onChange(hslToHex(next.h, next.s, next.l));
   };
 
+  const pickFromScreen = async () => {
+    if (!canUseEyeDropper) return;
+    try {
+      const result = await new window.EyeDropper().open();
+      onChange(result.sRGBHex);
+    } catch {
+      // The browser throws when the user cancels the picker.
+    }
+  };
+
   return (
     <section className="panel-control" style={{ '--control-color': normalized }}>
       <div className="panel-control-head">
         <label htmlFor={`${label}-tool-hex`}>{label}</label>
-        <div className="control-field">
-          <span className="control-swatch" style={{ backgroundColor: normalized }}>
+        <div className="control-field-row">
+          <div className="control-field">
+            <span className="control-swatch" style={{ backgroundColor: normalized }}>
+              <input
+                type="color"
+                value={normalized}
+                onChange={(event) => onChange(event.target.value)}
+                aria-label={`Pick ${label.toLowerCase()} color`}
+              />
+            </span>
             <input
-              type="color"
-              value={normalized}
+              id={`${label}-tool-hex`}
+              value={formatHex(value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
               onChange={(event) => onChange(event.target.value)}
-              aria-label={`Pick ${label.toLowerCase()} color`}
             />
-          </span>
-          <input
-            id={`${label}-tool-hex`}
-            value={formatHex(value)}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-            onChange={(event) => onChange(event.target.value)}
-          />
+          </div>
+          {canUseEyeDropper && (
+            <button
+              type="button"
+              className="screen-picker"
+              onClick={pickFromScreen}
+              title="Pick a color from the screen"
+              aria-label={`Pick ${label.toLowerCase()} color from the screen`}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="m2 22 1-1h3l9-9" />
+                <path d="M3 21v-3l9-9" />
+                <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
       <HslSliders hsl={hsl} onChange={updateHsl} />
@@ -277,6 +329,23 @@ function randomPassingPair() {
   return Math.random() > 0.5
     ? { foreground: '#111111', background: '#FFFFFF' }
     : { foreground: '#FFFFFF', background: '#111111' };
+}
+
+function nudgeToContrast(color, background, target) {
+  if (!isValidHex(color) || !isValidHex(background)) return color;
+
+  const hsl = hexToHsl(color);
+  for (let step = 1; step <= 100; step += 1) {
+    for (const direction of [1, -1]) {
+      const lightness = hsl.l + direction * step;
+      if (lightness < 0 || lightness > 100) continue;
+
+      const next = hslToHex(hsl.h, hsl.s, lightness);
+      if (contrast(next, background) >= target) return next;
+    }
+  }
+
+  return color;
 }
 
 function formatHex(value) {
