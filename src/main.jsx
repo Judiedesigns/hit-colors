@@ -325,15 +325,18 @@ function HexTextInput({ value, onChange, onFocus, onBlur, ...props }) {
       onChange={(event) => {
         const nextDraft = event.target.value;
         setDraft(nextDraft);
-        if (nextDraft.trim() === '') emitChange('');
-        if (isCompleteHex(nextDraft)) emitChange(normalizeHex(nextDraft));
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && isCompleteHex(draft)) {
+          const nextValue = normalizeHex(draft);
+          setDraft(formatHex(nextValue));
+          emitChange(nextValue);
+          event.currentTarget.blur();
+        }
       }}
       onBlur={(event) => {
         setEditing(false);
-        if (draft.trim() === '') {
-          setDraft('');
-          emitChange('');
-        } else if (isCompleteHex(draft)) {
+        if (isCompleteHex(draft)) {
           const nextValue = normalizeHex(draft);
           setDraft(formatHex(nextValue));
           emitChange(nextValue);
