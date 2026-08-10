@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import readme from '../README.md?raw';
 import {
@@ -59,15 +59,15 @@ function HitColorsTool() {
   const [background, setBackground] = useState(initial.background);
   const [copyLabel, setCopyLabel] = useState('Copy');
   const foreground = palette[selectedColor] || palette[0];
-  const ratio = isValidHex(foreground) && isValidHex(background)
-    ? contrast(foreground, background)
-    : 0;
+  const displayForeground = safeHex(foreground);
+  const displayBackground = safeHex(background);
+  const ratio = contrast(displayForeground, displayBackground);
 
   const reverse = () => {
     setPalette((colors) => colors.map((color, index) => (
-      index === selectedColor ? background : color
+      index === selectedColor ? displayBackground : color
     )));
-    setBackground(foreground);
+    setBackground(displayForeground);
   };
 
   const random = () => {
@@ -82,10 +82,10 @@ function HitColorsTool() {
   };
 
   const copyPalette = async () => {
-    const passing = palette
-      .map((color) => `${color}  ${contrast(color, background).toFixed(2)}:1`)
+    const colors = palette
+      .map((color, index) => `${index === 0 ? 'Text' : `Accent ${index}`}: ${formatHex(safeHex(color))}`)
       .join('\n');
-    const value = `Background ${background}\n${passing}`;
+    const value = `Background: ${formatHex(displayBackground)}\n${colors}`;
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(value);
       setCopyLabel('Copied');
@@ -95,14 +95,14 @@ function HitColorsTool() {
 
   const updatePaletteColor = (index, value) => {
     setPalette((colors) => colors.map((color, colorIndex) => (
-      colorIndex === index ? normalizeHex(value) : color
+      colorIndex === index ? normalizeColorValue(value) : color
     )));
   };
 
   const addCompanionColor = () => {
     setPalette((colors) => {
       if (colors.length >= 5) return colors;
-      const next = buildCompanionColor(colors[0], background, colors.length);
+      const next = buildCompanionColor(safeHex(colors[0]), displayBackground, colors.length);
       setSelectedColor(colors.length);
       return [...colors, next];
     });
@@ -116,17 +116,17 @@ function HitColorsTool() {
 
   const fixCompanionColor = (index) => {
     setPalette((colors) => colors.map((color, colorIndex) => (
-      colorIndex === index ? nudgeToContrast(color, background, 4.5) : color
+      colorIndex === index ? nudgeToContrast(safeHex(color), displayBackground, 4.5) : color
     )));
   };
 
   return (
     <main className="contrast-shell">
-      <style>{`::selection { color: ${background}; background-color: ${foreground}; }`}</style>
+      <style>{`::selection { color: ${displayBackground}; background-color: ${displayForeground}; }`}</style>
       <div className="contrast-layout">
         <section
           className="contrast-preview"
-          style={{ color: foreground, backgroundColor: background }}
+          style={{ color: displayForeground, backgroundColor: displayBackground }}
         >
           <div className="contrast-score">
             <span>Aa</span>
@@ -177,7 +177,7 @@ function HitColorsTool() {
             </div>
             <div className="palette-list">
               {palette.map((color, index) => {
-                const rowRatio = contrast(color, background);
+                const rowRatio = contrast(safeHex(color), displayBackground);
                 const rowLabel = badgeLabel(rowRatio);
                 const canFix = rowLabel === 'Fail';
 
@@ -190,8 +190,8 @@ function HitColorsTool() {
                       className="palette-select"
                       onClick={() => setSelectedColor(index)}
                     >
-                      <span style={{ backgroundColor: color }} />
-                      <input
+                      <span style={{ backgroundColor: safeHex(color) }} />
+                      <HexTextInput
                         value={formatHex(color)}
                         autoComplete="off"
                         autoCorrect="off"
@@ -237,7 +237,7 @@ function HitColorsTool() {
 }
 
 function HitColorControl({ label, value, onChange }) {
-  const normalized = normalizeHex(value);
+  const normalized = safeHex(value);
   const hsl = hexToHsl(normalized);
   const canUseEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
 
@@ -270,7 +270,7 @@ function HitColorControl({ label, value, onChange }) {
                 aria-label={`Pick ${label.toLowerCase()} color`}
               />
             </span>
-            <input
+            <HexTextInput
               id={`${label}-tool-hex`}
               value={formatHex(value)}
               autoComplete="off"
@@ -299,6 +299,50 @@ function HitColorControl({ label, value, onChange }) {
       </div>
       <HslSliders hsl={hsl} onChange={updateHsl} />
     </section>
+  );
+}
+
+function HexTextInput({ value, onChange, onFocus, onBlur, ...props }) {
+  const [draft, setDraft] = useState(formatHexInput(value));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(formatHexInput(value));
+  }, [editing, value]);
+
+  const emitChange = (nextValue) => {
+    onChange({ target: { value: nextValue } });
+  };
+
+  return (
+    <input
+      {...props}
+      value={draft}
+      onFocus={(event) => {
+        setEditing(true);
+        onFocus?.(event);
+      }}
+      onChange={(event) => {
+        const nextDraft = event.target.value;
+        setDraft(nextDraft);
+        if (nextDraft.trim() === '') emitChange('');
+        if (isCompleteHex(nextDraft)) emitChange(normalizeHex(nextDraft));
+      }}
+      onBlur={(event) => {
+        setEditing(false);
+        if (draft.trim() === '') {
+          setDraft('');
+          emitChange('');
+        } else if (isCompleteHex(draft)) {
+          const nextValue = normalizeHex(draft);
+          setDraft(formatHex(nextValue));
+          emitChange(nextValue);
+        } else {
+          setDraft(formatHexInput(value));
+        }
+        onBlur?.(event);
+      }}
+    />
   );
 }
 
@@ -399,6 +443,22 @@ function clamp(value, min, max) {
 
 function formatHex(value) {
   return normalizeHex(value).toLowerCase();
+}
+
+function formatHexInput(value) {
+  return String(value).trim() === '' ? '' : formatHex(value);
+}
+
+function safeHex(value, fallback = '#000000') {
+  return isCompleteHex(value) ? normalizeHex(value) : fallback;
+}
+
+function isCompleteHex(value) {
+  return String(value).trim() !== '' && isValidHex(value);
+}
+
+function normalizeColorValue(value) {
+  return String(value).trim() === '' ? '' : normalizeHex(value);
 }
 
 function Home() {
