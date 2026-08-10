@@ -132,6 +132,14 @@ function HitColorsTool() {
             <span>Aa</span>
             <strong>{ratio.toFixed(2)}</strong>
             <b>{badgeLabel(ratio)}</b>
+            <button
+              type="button"
+              className="contrast-info"
+              aria-label={contrastDescription(ratio)}
+            >
+              i
+              <span role="tooltip">{contrastDescription(ratio)}</span>
+            </button>
           </div>
           <p>
             Contrast is the difference in luminance or color that makes an object
@@ -142,7 +150,7 @@ function HitColorsTool() {
         <aside className="contrast-panel">
           <div className="panel-intro">
             <h1>Hit colors</h1>
-            <p>Check text and accent colors against a background for WCAG contrast.</p>
+            <p>WCAG contrast for text and accent colors.</p>
           </div>
           <HitColorControl
             label={selectedColor === 0 ? 'Text' : `Accent ${selectedColor}`}
@@ -331,6 +339,13 @@ function randomPassingPair() {
   return Math.random() > 0.5
     ? { foreground: '#111111', background: '#FFFFFF' }
     : { foreground: '#FFFFFF', background: '#111111' };
+}
+
+function contrastDescription(ratio) {
+  if (ratio >= 7) return 'AAA: passes enhanced contrast for normal text.';
+  if (ratio >= 4.5) return 'AA: passes standard contrast for normal text.';
+  if (ratio >= 3) return 'Large: only passes for large or bold text.';
+  return 'Fail: does not meet WCAG contrast for readable text.';
 }
 
 function buildCompanionPalette(foreground, background, count, selectedIndex) {
