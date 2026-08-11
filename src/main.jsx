@@ -227,6 +227,29 @@ function HitColorsTool() {
               })}
             </div>
           </section>
+          <section className="maker-panel">
+            <div>
+              <a href="https://florenceeze.com">Made by Mars</a>
+              <span>Product designer</span>
+            </div>
+            <a href="mailto:florencekey22@gmail.com">
+              Send a message
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </a>
+          </section>
         </aside>
       </div>
     </main>
