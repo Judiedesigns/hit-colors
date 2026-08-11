@@ -1,23 +1,3 @@
-export const defaultColors = [
-  '#7FDBFF',
-  '#0074D9',
-  '#01FF70',
-  '#001F3F',
-  '#39CCCC',
-  '#3D9970',
-  '#2ECC40',
-  '#FF4136',
-  '#85144B',
-  '#FF851B',
-  '#B10DC9',
-  '#FFDC00',
-  '#F012BE',
-  '#AAAAAA',
-  '#FFFFFF',
-  '#111111',
-  '#DDDDDD',
-];
-
 const namedColors = {
   black: '#000000',
   blue: '#0000FF',
@@ -139,10 +119,6 @@ export function contrast(a, b) {
   const first = luminance(a);
   const second = luminance(b);
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
-}
-
-export function isLight(hex) {
-  return luminance(hex) > 0.45;
 }
 
 export function accessibility(ratio) {

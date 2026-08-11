@@ -1,14 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import readme from '../README.md?raw';
 import {
-  accessibility,
   badgeLabel,
   contrast,
-  defaultColors,
   hexToHsl,
   hslToHex,
-  isLight,
   isValidHex,
   normalizeHex,
 } from './color-utils';
@@ -481,208 +478,26 @@ function Home() {
   );
 }
 
-function Demos() {
-  return (
-    <main className="container demos-page">
-      <h1>Demos</h1>
-      <ul className="demo-links">
-        <li><a href="/demos/text">Text Demo</a></li>
-        <li><a href="/demos/matrix">Matrix Demo</a></li>
-        <li><a href="http://basscss.com/docs/reference/color-combinations">Basscss Color Combos</a></li>
-        <li><a href="http://clrs.cc/a11y">clrs.cc/a11y</a></li>
-      </ul>
-    </main>
-  );
-}
-
-function TextDemo() {
-  const [foreground, setForeground] = useState('#AACCFF');
-  const [background, setBackground] = useState('#222233');
-  const ratio = isValidHex(foreground) && isValidHex(background)
-    ? contrast(foreground, background)
-    : 0;
-  const level = accessibility(ratio);
-
-  return (
-    <main
-      className="text-demo"
-      style={{ color: foreground, backgroundColor: background }}
-    >
-      <section className="text-preview">
-        <div>
-          <div className="preview-top">
-            <HeadingBadge level={level} />
-            <div className="contrast-number">{ratio.toFixed(2)}</div>
-          </div>
-          <h2>Contrast</h2>
-          <p>
-            Contrast is the difference in luminance or color that makes an object
-            (or its representation in an image or display) distinguishable. In
-            visual perception of the real world, contrast is determined by the
-            difference in the color and brightness of the object and other objects
-            within the same field of view. Because the human visual system is more
-            sensitive to contrast than absolute luminance, we can perceive the world
-            similarly regardless of the huge changes in illumination over the day
-            or from place to place. The maximum contrast of an image is the contrast
-            ratio or dynamic range.
-          </p>
-        </div>
-      </section>
-      <section className="fg-bg-form">
-        <ColorControls label="Foreground" value={foreground} onChange={setForeground} />
-        <ColorControls label="Background" value={background} onChange={setBackground} />
-      </section>
-    </main>
-  );
-}
-
-function MatrixDemo() {
-  const [colors, setColors] = useState(defaultColors);
-  const [modalColor, setModalColor] = useState(null);
-
-  const matrix = useMemo(() => {
-    return colors.map((hex, index) => ({
-      hex,
-      index,
-      combinations: colors
-        .map((comboHex, comboIndex) => {
-          if (index === comboIndex) return null;
-          const ratio = contrast(hex, comboHex);
-          return {
-            hex: comboHex,
-            contrast: ratio,
-            accessibility: accessibility(ratio),
-          };
-        })
-        .filter(Boolean),
-    }));
-  }, [colors]);
-
-  const updateColor = (index, nextColor) => {
-    setColors((current) => {
-      const next = [...current];
-      next[index] = normalizeHex(nextColor);
-      return next;
-    });
-  };
-
-  const removeColor = (index) => {
-    setColors((current) => current.filter((_, itemIndex) => itemIndex !== index));
-  };
-
-  const addColor = () => {
-    setColors((current) => [...current, '#444444']);
-  };
-
-  return (
-    <main className="matrix-demo">
-      <section className="matrix-stage">
-        <aside className="color-list">
-          {colors.map((color, index) => (
-            <ColorListItem
-              key={`${index}-${color}`}
-              color={color}
-              onChange={(nextColor) => updateColor(index, nextColor)}
-              onRemove={() => removeColor(index)}
-            />
-          ))}
-          <div className="add-color">
-            <button onClick={addColor}>Add Color</button>
-          </div>
-        </aside>
-        <section className="matrix-panel">
-          {matrix.map((color) => (
-            <div className="matrix-row" key={color.index}>
-              {color.combinations.map((combo) => (
-                <ColorChip
-                  key={`${color.hex}-${combo.hex}`}
-                  color={color.hex}
-                  combo={combo}
-                  onClick={() => setModalColor({ ...color, combo })}
-                />
-              ))}
-            </div>
-          ))}
-        </section>
-      </section>
-      {modalColor && (
-        <PreviewModal color={modalColor} onClose={() => setModalColor(null)} />
-      )}
-    </main>
-  );
-}
-
-function ColorControls({ label, value, onChange }) {
-  const normalized = normalizeHex(value);
-  const hsl = hexToHsl(normalized);
-
-  const updateHsl = (key, nextValue) => {
-    const next = { ...hsl, [key]: Number(nextValue) };
-    onChange(hslToHex(next.h, next.s, next.l));
-  };
-
-  return (
-    <div className="control-group">
-      <label htmlFor={`${label}-hex`} className="control-label">{label}</label>
-      <input
-        id={`${label}-hex`}
-        className="hex-input"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <HslSliders hsl={hsl} onChange={updateHsl} />
-    </div>
-  );
-}
-
-function ColorListItem({ color, onChange, onRemove }) {
-  const normalized = normalizeHex(color);
-  const foreground = isLight(normalized) ? '#111' : '#fff';
-  const hsl = hexToHsl(normalized);
-
-  const updateHsl = (key, nextValue) => {
-    const next = { ...hsl, [key]: Number(nextValue) };
-    onChange(hslToHex(next.h, next.s, next.l));
-  };
-
-  return (
-    <article
-      className="color-list-item"
-      style={{ color: foreground, backgroundColor: normalized }}
-    >
-      <div className="color-list-head">
-        <input
-          aria-label="Hex color"
-          value={normalized}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        <button title="Remove Color" onClick={onRemove}>&times;</button>
-      </div>
-      <HslSliders hsl={hsl} onChange={updateHsl} hideValues />
-    </article>
-  );
-}
-
-function HslSliders({ hsl, onChange, hideValues = false }) {
+function HslSliders({ hsl, onChange }) {
   return (
     <div className="hsl-sliders">
       <Slider
         label="Hue"
-        display={hideValues ? '' : `${hsl.h}\u00b0`}
+        display={`${hsl.h}\u00b0`}
         value={hsl.h}
         max="360"
         onChange={(value) => onChange('h', value)}
       />
       <Slider
         label="Saturation"
-        display={hideValues ? '' : (hsl.s / 100).toFixed(2)}
+        display={(hsl.s / 100).toFixed(2)}
         value={hsl.s}
         max="100"
         onChange={(value) => onChange('s', value)}
       />
       <Slider
         label="Lightness"
-        display={hideValues ? '' : (hsl.l / 100).toFixed(2)}
+        display={(hsl.l / 100).toFixed(2)}
         value={hsl.l}
         max="100"
         onChange={(value) => onChange('l', value)}
@@ -706,71 +521,6 @@ function Slider({ label, display, value, max, onChange }) {
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
-  );
-}
-
-function ColorChip({ color, combo, onClick }) {
-  return (
-    <button
-      className="color-chip"
-      type="button"
-      style={{ color, backgroundColor: combo.hex }}
-      title={`Preview ${color} on ${combo.hex}`}
-      onClick={onClick}
-    >
-      <span>{combo.contrast.toFixed(2)}</span>
-      <Badge color={color} combo={combo} />
-    </button>
-  );
-}
-
-function Badge({ color, combo }) {
-  const value = badgeLabel(combo.contrast);
-  if (value === 'Fail') return <span className="badge fail">Fail</span>;
-  return (
-    <span className="badge" style={{ color: combo.hex, backgroundColor: color }}>
-      {value}
-    </span>
-  );
-}
-
-function HeadingBadge({ level }) {
-  let value = 'Fail';
-  if (level.aaa) value = 'AAA';
-  else if (level.aa) value = 'AA';
-  else if (level.aaLarge) value = 'Large';
-
-  return <h1 className="heading-badge">{value}</h1>;
-}
-
-function PreviewModal({ color, onClose }) {
-  const combo = color.combo;
-  const level = accessibility(combo.contrast);
-
-  return (
-    <div
-      className="modal"
-      style={{ color: color.hex, backgroundColor: combo.hex }}
-      onClick={onClose}
-    >
-      <div className="modal-header">
-        <strong>{color.hex} on {combo.hex}</strong>
-        <button onClick={onClose}>&times;</button>
-      </div>
-      <div className="modal-body">
-        <div>
-          <div className="preview-top">
-            <HeadingBadge level={level} />
-            <div className="contrast-number">{combo.contrast.toFixed(2)}</div>
-          </div>
-          <h2>Contrast</h2>
-          <p>
-            Contrast is the difference in luminance or color that makes an object
-            distinguishable from its background.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 
