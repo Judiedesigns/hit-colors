@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import chroma from 'chroma-js';
+import hello from 'hello-color';
 import readme from '../README.md?raw';
 import {
   badgeLabel,
@@ -396,9 +398,11 @@ function randomHex() {
 
 function randomPassingPair() {
   for (let index = 0; index < 80; index += 1) {
-    const foreground = randomHex();
-    const background = randomHex();
-    if (contrast(foreground, background) >= 4.5) {
+    const background = chroma.random().hex().toUpperCase();
+    const result = hello(background, { contrast: 4.5 });
+    const foreground = result?.color ? normalizeHex(result.color) : null;
+
+    if (foreground && contrast(foreground, background) >= 4.5) {
       return { foreground, background };
     }
   }
@@ -436,7 +440,7 @@ function buildCompanionColor(seed, background, index) {
     clamp(lightness[index % lightness.length], 18, 82),
   );
 
-  return nudgeToContrast(next, background, 4.5);
+  return nudgeToContrast(next, background, 3);
 }
 
 function nudgeToContrast(color, background, target) {
