@@ -6,6 +6,7 @@ import readme from '../README.md?raw';
 import {
   badgeLabel,
   contrast,
+  hexToRgb,
   hexToHsl,
   hslToHex,
   isValidHex,
@@ -92,6 +93,10 @@ function HitColorsTool() {
     }
   };
 
+  const downloadPalette = () => {
+    exportPaletteImage(displayBackground, palette.map((color) => safeHex(color)));
+  };
+
   const updatePaletteColor = (index, value) => {
     setPalette((colors) => colors.map((color, colorIndex) => (
       colorIndex === index ? normalizeColorValue(value) : color
@@ -164,7 +169,30 @@ function HitColorsTool() {
           </div>
           <section className="palette-panel">
             <div className="palette-head">
-              <span>Companion colors</span>
+              <span>Palette</span>
+              <button
+                type="button"
+                className="palette-download"
+                onClick={downloadPalette}
+                aria-label="Download palette"
+                title="Download palette"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
               <button
                 type="button"
                 onClick={addCompanionColor}
@@ -486,6 +514,65 @@ function isCompleteHex(value) {
 
 function normalizeColorValue(value) {
   return String(value).trim() === '' ? '' : normalizeHex(value);
+}
+
+function exportPaletteImage(background, palette) {
+  const colors = [
+    { role: 'Background', hex: normalizeHex(background), ratio: null },
+    ...palette.map((color, index) => {
+      const hex = normalizeHex(color);
+      return {
+        role: index === 0 ? 'Text' : `Accent ${index}`,
+        hex,
+        ratio: contrast(hex, background),
+      };
+    }),
+  ];
+  const width = 1920;
+  const height = 1080;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  const bandWidth = width / colors.length;
+
+  canvas.width = width;
+  canvas.height = height;
+
+  colors.forEach((color, index) => {
+    const left = index * bandWidth;
+    const textColor = readableTextColor(color.hex);
+    const [red, green, blue] = hexToRgb(color.hex);
+    const lines = [
+      color.hex.toUpperCase(),
+      color.role.toUpperCase(),
+      `RGB ${red}, ${green}, ${blue}`,
+    ];
+
+    if (color.ratio) {
+      lines.push(`${color.ratio.toFixed(2)} ${badgeLabel(color.ratio).toUpperCase()}`);
+    }
+
+    context.fillStyle = color.hex;
+    context.fillRect(left, 0, bandWidth + 1, height);
+    context.save();
+    context.translate(left + bandWidth * 0.34, height - 68);
+    context.rotate(-Math.PI / 2);
+    context.fillStyle = textColor;
+    context.font = '500 21px JetBrains Mono, Menlo, Consolas, monospace';
+    context.textBaseline = 'top';
+    lines.forEach((line, lineIndex) => {
+      context.fillText(line, 0, lineIndex * 30);
+    });
+    context.restore();
+  });
+
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = `hit-colors-${Date.now()}.png`;
+  link.click();
+}
+
+function readableTextColor(color) {
+  return contrast(color, '#FFFFFF') >= contrast(color, '#111111') ? '#FFFFFF' : '#111111';
 }
 
 function Home() {
