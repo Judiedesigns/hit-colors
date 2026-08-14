@@ -197,8 +197,9 @@ pre {
   display: flex;
   align-items: baseline;
   gap: 18px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   line-height: .85;
+  white-space: nowrap;
 }
 
 .contrast-score span {
@@ -868,16 +869,25 @@ input[type="range"] {
   }
 
   .contrast-score {
-    gap: .75rem;
+    gap: .65rem;
   }
 
-  .contrast-score span,
-  .contrast-score strong {
+  .contrast-score span {
     font-size: clamp(3.6rem, 18vw, 5rem);
   }
 
+  .contrast-score strong {
+    font-size: clamp(2.1rem, 10vw, 3.25rem);
+  }
+
   .contrast-score b {
-    font-size: 1.8rem;
+    font-size: clamp(1.35rem, 6vw, 1.8rem);
+  }
+
+  .contrast-info {
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
   }
 
   .contrast-panel {
