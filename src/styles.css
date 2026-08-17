@@ -538,10 +538,61 @@ pre {
   border-radius: 10px;
   font-size: .8125rem;
   font-weight: 500;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease, transform 120ms ease;
 }
 
 .panel-actions button:hover {
   background: rgba(255, 255, 255, .08);
+  color: #e8e9ea;
+}
+
+.panel-actions button:active {
+  transform: scale(.98);
+}
+
+.random-group {
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, .05);
+  border-radius: 10px;
+}
+
+.panel-actions .random-group button {
+  background: transparent;
+}
+
+.panel-actions .random-group button:first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.panel-actions .random-group .random-undo {
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-left: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 0 10px 10px 0;
+}
+
+.panel-actions .random-group .random-undo:not(:disabled):hover {
+  color: #e8e9ea;
+  background: rgba(255, 255, 255, .08);
+}
+
+.panel-actions .random-group .random-undo:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.panel-actions .random-group .random-undo:disabled:hover {
+  color: rgba(232, 233, 234, .78);
+  background: transparent;
+}
+
+.panel-actions .random-group .random-undo:disabled:active {
+  transform: none;
 }
 
 .panel-actions .copy-button {

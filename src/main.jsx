@@ -58,12 +58,21 @@ function HitColorsTool() {
   const [selectedColor, setSelectedColor] = useState(0);
   const [background, setBackground] = useState(initial.background);
   const [copyLabel, setCopyLabel] = useState('Copy');
+  const [actionHistory, setActionHistory] = useState([]);
   const foreground = palette[selectedColor] || palette[0];
   const displayForeground = safeHex(foreground);
   const displayBackground = safeHex(background);
   const ratio = contrast(displayForeground, displayBackground);
 
+  const saveActionHistory = () => {
+    setActionHistory((history) => [
+      ...history,
+      { palette, background, selectedColor },
+    ].slice(-12));
+  };
+
   const reverse = () => {
+    saveActionHistory();
     setPalette((colors) => colors.map((color, index) => (
       index === selectedColor ? displayBackground : color
     )));
@@ -72,6 +81,7 @@ function HitColorsTool() {
 
   const random = () => {
     const next = randomPassingPair();
+    saveActionHistory();
     setPalette((colors) => buildCompanionPalette(
       next.foreground,
       next.background,
@@ -79,6 +89,17 @@ function HitColorsTool() {
       selectedColor,
     ));
     setBackground(next.background);
+  };
+
+  const undoAction = () => {
+    setActionHistory((history) => {
+      const previous = history[history.length - 1];
+      if (!previous) return history;
+      setPalette(previous.palette);
+      setBackground(previous.background);
+      setSelectedColor(previous.selectedColor);
+      return history.slice(0, -1);
+    });
   };
 
   const copyPalette = async () => {
@@ -163,8 +184,33 @@ function HitColorsTool() {
           />
           <HitColorControl label="Background" value={background} onChange={setBackground} />
           <div className="panel-actions">
-            <button onClick={reverse}>Reverse</button>
-            <button onClick={random}>Random</button>
+            <button type="button" onClick={reverse}>Reverse</button>
+            <div className="random-group">
+              <button type="button" onClick={random}>Random</button>
+              <button
+                type="button"
+                className="random-undo"
+                onClick={undoAction}
+                disabled={actionHistory.length === 0}
+                aria-label="Undo last action"
+                title="Undo last action"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 7v6h6" />
+                  <path d="M21 17a9 9 0 0 0-15-6.7L3 13" />
+                </svg>
+              </button>
+            </div>
             <button className="copy-button" onClick={copyPalette}>{copyLabel}</button>
           </div>
           <section className="palette-panel">
