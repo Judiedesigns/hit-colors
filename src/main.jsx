@@ -586,21 +586,18 @@ function exportPaletteImage(background, palette) {
   colors.forEach((color, index) => {
     const left = index * bandWidth;
     const textColor = readableTextColor(color.hex);
-    const [red, green, blue] = hexToRgb(color.hex);
+    const grade = color.ratio ? badgeLabel(color.ratio).toUpperCase() : null;
     const lines = [
-      color.hex.toUpperCase(),
       color.role.toUpperCase(),
-      `RGB ${red}, ${green}, ${blue}`,
+      color.hex.toUpperCase(),
     ];
 
-    if (color.ratio) {
-      lines.push(`${color.ratio.toFixed(2)} ${badgeLabel(color.ratio).toUpperCase()}`);
-    }
+    if (grade) lines.unshift(grade);
 
     context.fillStyle = color.hex;
     context.fillRect(left, 0, bandWidth + 1, height);
     context.save();
-    context.translate(left + bandWidth * 0.34, height - 68);
+    context.translate(left + bandWidth * 0.34, 148);
     context.rotate(-Math.PI / 2);
     context.fillStyle = textColor;
     context.font = '500 21px JetBrains Mono, Menlo, Consolas, monospace';

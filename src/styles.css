@@ -185,7 +185,7 @@ pre {
 .contrast-preview {
   grid-column: 2;
   min-width: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 72px 64px;
   display: flex;
   flex-direction: column;
@@ -205,21 +205,21 @@ pre {
 .contrast-score span {
   font-size: 104px;
   font-weight: 700;
-  letter-spacing: -.04em;
+  letter-spacing: 0;
 }
 
 .contrast-score strong {
   font-family: "JetBrains Mono", Menlo, Consolas, monospace;
   font-size: 44px;
   font-weight: 700;
-  letter-spacing: -.03em;
+  letter-spacing: 0;
   opacity: .85;
 }
 
 .contrast-score b {
   font-size: 28px;
   font-weight: 700;
-  letter-spacing: -.01em;
+  letter-spacing: 0;
   line-height: 1;
   opacity: .7;
 }
@@ -303,6 +303,86 @@ pre {
   margin: 0;
   font-size: 21px;
   line-height: 1.6;
+}
+
+@media (max-width: 64rem) {
+  .contrast-layout {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+
+  .contrast-preview {
+    padding: 56px 40px;
+    gap: 34px;
+  }
+
+  .contrast-score {
+    gap: 14px;
+  }
+
+  .contrast-score span {
+    font-size: 82px;
+  }
+
+  .contrast-score strong {
+    font-size: 36px;
+  }
+
+  .contrast-score b {
+    font-size: 24px;
+  }
+
+  .contrast-preview p {
+    max-width: 42ch;
+    font-size: 20px;
+    line-height: 1.55;
+  }
+
+  .panel-actions {
+    gap: 6px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .panel-actions button {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .panel-actions .copy-button {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 52rem) {
+  .contrast-layout {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+
+  .contrast-preview {
+    padding: 44px 28px;
+    gap: 30px;
+  }
+
+  .contrast-score {
+    gap: 12px;
+  }
+
+  .contrast-score span {
+    font-size: 68px;
+  }
+
+  .contrast-score strong {
+    font-size: 31px;
+  }
+
+  .contrast-score b {
+    font-size: 21px;
+  }
+
+  .contrast-preview p {
+    font-size: 18px;
+  }
 }
 
 .contrast-panel {
@@ -604,6 +684,7 @@ pre {
 }
 
 .panel-actions .copy-button:hover {
+  color: #0e1012;
   background: #fff;
 }
 
@@ -924,6 +1005,7 @@ input[type="range"] {
     grid-column: auto;
     min-height: 54vh;
     padding: 36px 20px;
+    gap: 28px;
   }
 
   .contrast-score {
@@ -931,21 +1013,27 @@ input[type="range"] {
   }
 
   .contrast-score span {
-    font-size: clamp(3.6rem, 18vw, 5rem);
+    font-size: 4.5rem;
   }
 
   .contrast-score strong {
-    font-size: clamp(2.1rem, 10vw, 3.25rem);
+    font-size: 2.65rem;
   }
 
   .contrast-score b {
-    font-size: clamp(1.35rem, 6vw, 1.8rem);
+    font-size: 1.55rem;
   }
 
   .contrast-info {
     width: 16px;
     height: 16px;
     font-size: 11px;
+  }
+
+  .contrast-preview p {
+    max-width: 30ch;
+    font-size: 1.375rem;
+    line-height: 1.55;
   }
 
   .contrast-panel {
