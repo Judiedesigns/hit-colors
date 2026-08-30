@@ -19,6 +19,44 @@ const pkg = {
   description: 'A color contrast tool for testing text, background, and companion colors.',
 };
 
+const SAVED_SYSTEMS_KEY = 'hitcolors:systems';
+const MAX_SAVED_SYSTEMS = 12;
+
+function normalizeColorSystem(system) {
+  const palette = Array.isArray(system?.palette)
+    ? system.palette.filter(isValidHex).map(normalizeHex).slice(0, 5)
+    : [];
+  const background = isValidHex(system?.background) ? normalizeHex(system.background) : null;
+  if (!palette.length || !background) return null;
+  return { palette, background };
+}
+
+function colorSystemKey(system) {
+  return `${system.background}:${system.palette.join(',')}`;
+}
+
+function loadSavedSystems() {
+  try {
+    const raw = window.localStorage.getItem(SAVED_SYSTEMS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map(normalizeColorSystem)
+      .filter(Boolean)
+      .slice(0, MAX_SAVED_SYSTEMS);
+  } catch {
+    return [];
+  }
+}
+
+function writeSavedSystems(systems) {
+  try {
+    window.localStorage.setItem(SAVED_SYSTEMS_KEY, JSON.stringify(systems));
+  } catch {
+    // Storage can be unavailable (private browsing, quota) - saving is best-effort.
+  }
+}
+
 function App() {
   const route = normalizeRoute(window.location.pathname);
 
@@ -59,10 +97,24 @@ function HitColorsTool() {
   const [background, setBackground] = useState(initial.background);
   const [copyLabel, setCopyLabel] = useState('Copy');
   const [actionHistory, setActionHistory] = useState([]);
+  const [saved, setSaved] = useState(loadSavedSystems);
+  const [mobileTab, setMobileTab] = useState('fg');
   const foreground = palette[selectedColor] || palette[0];
   const displayForeground = safeHex(foreground);
   const displayBackground = safeHex(background);
+  const currentSystem = {
+    palette: palette.map((color) => safeHex(color)),
+    background: displayBackground,
+  };
   const ratio = contrast(displayForeground, displayBackground);
+
+  const activateForeground = () => {
+    setMobileTab('fg');
+  };
+
+  const activateBackground = () => {
+    setMobileTab('bg');
+  };
 
   const saveActionHistory = () => {
     setActionHistory((history) => [
@@ -114,10 +166,6 @@ function HitColorsTool() {
     }
   };
 
-  const downloadPalette = () => {
-    exportPaletteImage(displayBackground, palette.map((color) => safeHex(color)));
-  };
-
   const updatePaletteColor = (index, value) => {
     setPalette((colors) => colors.map((color, colorIndex) => (
       colorIndex === index ? normalizeColorValue(value) : color
@@ -129,6 +177,7 @@ function HitColorsTool() {
       if (colors.length >= 5) return colors;
       const next = buildCompanionColor(safeHex(colors[0]), displayBackground, colors.length);
       setSelectedColor(colors.length);
+      activateForeground();
       return [...colors, next];
     });
   };
@@ -143,6 +192,32 @@ function HitColorsTool() {
     setPalette((colors) => colors.map((color, colorIndex) => (
       colorIndex === index ? nudgeToContrast(safeHex(color), displayBackground, 4.5) : color
     )));
+  };
+
+  const saveCurrentSystem = () => {
+    setSaved((systems) => {
+      if (systems.some((system) => colorSystemKey(system) === colorSystemKey(currentSystem))) {
+        return systems;
+      }
+      const next = [...systems, currentSystem].slice(-MAX_SAVED_SYSTEMS);
+      writeSavedSystems(next);
+      return next;
+    });
+  };
+
+  const removeSavedSystem = (index) => {
+    setSaved((systems) => {
+      const next = systems.filter((_, systemIndex) => systemIndex !== index);
+      writeSavedSystems(next);
+      return next;
+    });
+  };
+
+  const loadSavedSystem = (system) => {
+    setPalette(system.palette);
+    setBackground(system.background);
+    setSelectedColor(0);
+    activateForeground();
   };
 
   return (
@@ -177,12 +252,40 @@ function HitColorsTool() {
             <h1>Hit colors</h1>
             <p>WCAG contrast for text and accent colors.</p>
           </div>
+          <div className="mobile-tabs">
+            <button
+              type="button"
+              className={`mobile-tab ${mobileTab === 'fg' ? 'active' : ''}`}
+              onClick={activateForeground}
+              aria-pressed={mobileTab === 'fg'}
+            >
+              <span style={{ backgroundColor: displayForeground }} />
+              {selectedColor === 0 ? 'Text' : `Accent ${selectedColor}`}
+            </button>
+            <button
+              type="button"
+              className={`mobile-tab ${mobileTab === 'bg' ? 'active' : ''}`}
+              onClick={activateBackground}
+              aria-pressed={mobileTab === 'bg'}
+            >
+              <span style={{ backgroundColor: displayBackground }} />
+              Background
+            </button>
+          </div>
           <HitColorControl
             label={selectedColor === 0 ? 'Text' : `Accent ${selectedColor}`}
             value={foreground}
             onChange={(value) => updatePaletteColor(selectedColor, value)}
+            onActivate={activateForeground}
+            hiddenOnMobile={mobileTab !== 'fg'}
           />
-          <HitColorControl label="Background" value={background} onChange={setBackground} />
+          <HitColorControl
+            label="Background"
+            value={background}
+            onChange={setBackground}
+            onActivate={activateBackground}
+            hiddenOnMobile={mobileTab !== 'bg'}
+          />
           <div className="panel-actions">
             <button type="button" onClick={reverse}>Reverse</button>
             <div className="random-group">
@@ -218,29 +321,6 @@ function HitColorsTool() {
               <span>Palette</span>
               <button
                 type="button"
-                className="palette-download"
-                onClick={downloadPalette}
-                aria-label="Download palette"
-                title="Download palette"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              </button>
-              <button
-                type="button"
                 onClick={addCompanionColor}
                 disabled={palette.length >= 5}
                 aria-label="Add companion color"
@@ -261,7 +341,10 @@ function HitColorsTool() {
                   >
                     <div
                       className="palette-select"
-                      onClick={() => setSelectedColor(index)}
+                      onClick={() => {
+                        setSelectedColor(index);
+                        activateForeground();
+                      }}
                     >
                       <span style={{ backgroundColor: safeHex(color) }} />
                       <HexTextInput
@@ -270,7 +353,10 @@ function HitColorsTool() {
                         autoCorrect="off"
                         autoCapitalize="off"
                         spellCheck="false"
-                        onFocus={() => setSelectedColor(index)}
+                        onFocus={() => {
+                          setSelectedColor(index);
+                          activateForeground();
+                        }}
                         onChange={(event) => updatePaletteColor(index, event.target.value)}
                       />
                     </div>
@@ -303,10 +389,51 @@ function HitColorsTool() {
               })}
             </div>
           </section>
+          <section className="saved-panel">
+            <div className="saved-head">
+              <span>Saved</span>
+            </div>
+            <div className="saved-list">
+              <button
+                type="button"
+                className="saved-add"
+                onClick={saveCurrentSystem}
+                aria-label="Save current color system"
+                title="Save current color system"
+              >
+                +
+              </button>
+              {saved.length === 0 && (
+                <span className="saved-hint">Save this system</span>
+              )}
+              {saved.map((system, index) => (
+                <span
+                  className="saved-color"
+                  key={`${colorSystemKey(system)}-${index}`}
+                >
+                  <button
+                    type="button"
+                    className="saved-swatch"
+                    style={{ backgroundColor: system.background }}
+                    title={`Use saved system ${index + 1}`}
+                    onClick={() => loadSavedSystem(system)}
+                    aria-label={`Use saved color system ${index + 1}`}
+                  />
+                  <button
+                    type="button"
+                    className="saved-remove"
+                    onClick={() => removeSavedSystem(index)}
+                    aria-label={`Remove saved color system ${index + 1}`}
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          </section>
           <section className="maker-panel">
             <div>
               <a href="https://florenceeze.com">Made by Mars</a>
-              <span>Product designer</span>
             </div>
             <a href="mailto:florencekey22@gmail.com">
               Send a message
@@ -332,18 +459,20 @@ function HitColorsTool() {
   );
 }
 
-function HitColorControl({ label, value, onChange }) {
+function HitColorControl({ label, value, onChange, onActivate, hiddenOnMobile }) {
   const normalized = safeHex(value);
   const hsl = hexToHsl(normalized);
   const canUseEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
 
   const updateHsl = (key, nextValue) => {
+    onActivate?.();
     const next = { ...hsl, [key]: Number(nextValue) };
     onChange(hslToHex(next.h, next.s, next.l));
   };
 
   const pickFromScreen = async () => {
     if (!canUseEyeDropper) return;
+    onActivate?.();
     try {
       const result = await new window.EyeDropper().open();
       onChange(result.sRGBHex);
@@ -353,7 +482,11 @@ function HitColorControl({ label, value, onChange }) {
   };
 
   return (
-    <section className="panel-control" style={{ '--control-color': normalized }}>
+    <section
+      className="panel-control"
+      style={{ '--control-color': normalized }}
+      data-mobile-hidden={hiddenOnMobile ? 'true' : undefined}
+    >
       <div className="panel-control-head">
         <label htmlFor={`${label}-tool-hex`}>{label}</label>
         <div className="control-field-row">
@@ -362,7 +495,10 @@ function HitColorControl({ label, value, onChange }) {
               <input
                 type="color"
                 value={normalized}
-                onChange={(event) => onChange(event.target.value)}
+                onChange={(event) => {
+                  onActivate?.();
+                  onChange(event.target.value);
+                }}
                 aria-label={`Pick ${label.toLowerCase()} color`}
               />
             </span>
@@ -373,6 +509,7 @@ function HitColorControl({ label, value, onChange }) {
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck="false"
+              onFocus={onActivate}
               onChange={(event) => onChange(event.target.value)}
             />
           </div>
@@ -560,62 +697,6 @@ function isCompleteHex(value) {
 
 function normalizeColorValue(value) {
   return String(value).trim() === '' ? '' : normalizeHex(value);
-}
-
-function exportPaletteImage(background, palette) {
-  const colors = [
-    { role: 'Background', hex: normalizeHex(background), ratio: null },
-    ...palette.map((color, index) => {
-      const hex = normalizeHex(color);
-      return {
-        role: index === 0 ? 'Text' : `Accent ${index}`,
-        hex,
-        ratio: contrast(hex, background),
-      };
-    }),
-  ];
-  const width = 1920;
-  const height = 1080;
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  const bandWidth = width / colors.length;
-
-  canvas.width = width;
-  canvas.height = height;
-
-  colors.forEach((color, index) => {
-    const left = index * bandWidth;
-    const textColor = readableTextColor(color.hex);
-    const grade = color.ratio ? badgeLabel(color.ratio).toUpperCase() : null;
-    const lines = [
-      color.role.toUpperCase(),
-      color.hex.toUpperCase(),
-    ];
-
-    if (grade) lines.unshift(grade);
-
-    context.fillStyle = color.hex;
-    context.fillRect(left, 0, bandWidth + 1, height);
-    context.save();
-    context.translate(left + bandWidth * 0.34, 148);
-    context.rotate(-Math.PI / 2);
-    context.fillStyle = textColor;
-    context.font = '500 21px JetBrains Mono, Menlo, Consolas, monospace';
-    context.textBaseline = 'top';
-    lines.forEach((line, lineIndex) => {
-      context.fillText(line, 0, lineIndex * 30);
-    });
-    context.restore();
-  });
-
-  const link = document.createElement('a');
-  link.href = canvas.toDataURL('image/png');
-  link.download = `hit-colors-${Date.now()}.png`;
-  link.click();
-}
-
-function readableTextColor(color) {
-  return contrast(color, '#FFFFFF') >= contrast(color, '#111111') ? '#FFFFFF' : '#111111';
 }
 
 function Home() {
