@@ -411,6 +411,23 @@ pre {
   letter-spacing: 0;
 }
 
+.hit-wordmark {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.hit-wordmark::after {
+  content: "";
+  position: absolute;
+  top: calc(-.02em + 8px);
+  right: calc(-.18em - 2px);
+  width: .25em;
+  height: .25em;
+  background: #14dceb;
+  border-radius: 50%;
+}
+
 .panel-intro p {
   margin: 4px 0 0;
   color: rgba(232, 233, 234, .62);

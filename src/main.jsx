@@ -249,7 +249,10 @@ function HitColorsTool() {
 
         <aside className="contrast-panel">
           <div className="panel-intro">
-            <h1>Hit colors</h1>
+            <h1 className="hit-wordmark" aria-label="Hit colors">
+              <span className="hit-wordmark-h" aria-hidden="true">H</span>
+              <span aria-hidden="true">it colors</span>
+            </h1>
             <p>WCAG contrast for text and accent colors.</p>
           </div>
           <div className="mobile-tabs">
