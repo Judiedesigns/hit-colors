@@ -645,9 +645,9 @@ function buildCompanionColor(seed, background, index) {
   if (!isValidHex(seed) || !isValidHex(background)) return seed;
 
   const base = hexToHsl(seed);
-  const offsets = [0, 32, -38, 154, -154];
-  const saturations = [base.s, base.s + 2, base.s - 6, base.s - 10, base.s + 4];
-  const lightness = [base.l, base.l + 4, base.l - 4, base.l + 8, base.l - 8];
+  const offsets = [0, 150, -115, 70, -170];
+  const saturations = [base.s, base.s + 8, base.s - 8, base.s + 4, base.s - 12];
+  const lightness = [base.l, base.l - 2, base.l + 5, base.l - 6, base.l + 8];
   const next = hslToHex(
     wrapHue(base.h + offsets[index % offsets.length]),
     clamp(saturations[index % saturations.length], 42, 96),
