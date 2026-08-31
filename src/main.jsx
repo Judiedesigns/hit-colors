@@ -108,6 +108,9 @@ function HitColorsTool() {
     background: displayBackground,
   };
   const ratio = contrast(displayForeground, displayBackground);
+  const previewUiColor = contrast('#0e1012', displayBackground) >= contrast('#e8e9ea', displayBackground)
+    ? '#0e1012'
+    : '#e8e9ea';
 
   const activateForeground = () => {
     setMobileTab('fg');
@@ -246,6 +249,7 @@ function HitColorsTool() {
             <button
               type="button"
               className="contrast-info"
+              style={{ color: previewUiColor }}
               aria-label={contrastDescription(ratio)}
             >
               i
