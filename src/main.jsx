@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import chroma from 'chroma-js';
 import hello from 'hello-color';
+import { Shuffle } from 'lucide-react';
 import readme from '../README.md?raw';
 import {
   badgeLabel,
@@ -182,6 +183,16 @@ function HitColorsTool() {
     });
   };
 
+  const shuffleCompanionColors = () => {
+    if (palette.length <= 1) return;
+    saveActionHistory();
+    setPalette((colors) => buildShuffledCompanionPalette(
+      safeHex(colors[0]),
+      displayBackground,
+      colors.length,
+    ));
+  };
+
   const removeCompanionColor = (index) => {
     if (index === 0) return;
     setPalette((colors) => colors.filter((_, colorIndex) => colorIndex !== index));
@@ -255,7 +266,7 @@ function HitColorsTool() {
             </h1>
             <p>WCAG contrast for text and accent colors.</p>
           </div>
-          <div className="mobile-tabs">
+          <div className={`mobile-tabs ${mobileTab === 'bg' ? 'is-background' : 'is-foreground'}`}>
             <button
               type="button"
               className={`mobile-tab ${mobileTab === 'fg' ? 'active' : ''}`}
@@ -322,14 +333,29 @@ function HitColorsTool() {
           <section className="palette-panel">
             <div className="palette-head">
               <span>Palette</span>
-              <button
-                type="button"
-                onClick={addCompanionColor}
-                disabled={palette.length >= 5}
-                aria-label="Add companion color"
-              >
-                +
-              </button>
+              <div className="palette-actions">
+                <button
+                  type="button"
+                  className="palette-shuffle"
+                  onClick={shuffleCompanionColors}
+                  disabled={palette.length <= 1}
+                  aria-label="Shuffle palette colors"
+                  title="Shuffle palette colors"
+                >
+                  <Shuffle
+                    aria-hidden="true"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={addCompanionColor}
+                  disabled={palette.length >= 5}
+                  aria-label="Add companion color"
+                  title="Add companion color"
+                >
+                  +
+                </button>
+              </div>
             </div>
             <div className="palette-list">
               {palette.map((color, index) => {
@@ -641,6 +667,16 @@ function buildCompanionPalette(foreground, background, count, selectedIndex) {
   ));
 }
 
+function buildShuffledCompanionPalette(foreground, background, count) {
+  const next = [foreground];
+
+  for (let index = 1; index < count; index += 1) {
+    next.push(buildShuffledCompanionColor(foreground, background, index, next));
+  }
+
+  return next;
+}
+
 function buildCompanionColor(seed, background, index) {
   if (!isValidHex(seed) || !isValidHex(background)) return seed;
 
@@ -655,6 +691,52 @@ function buildCompanionColor(seed, background, index) {
   );
 
   return nudgeToContrast(next, background, 3);
+}
+
+function buildShuffledCompanionColor(seed, background, index, existingColors) {
+  if (!isValidHex(seed) || !isValidHex(background)) return seed;
+
+  const base = hexToHsl(seed);
+  const zones = [150, -115, 70, -170, 35, -70, 115, -150];
+  let best = null;
+
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const zone = zones[(index + attempt) % zones.length];
+    const hue = wrapHue(base.h + zone + randomBetween(-20, 20));
+    const saturation = clamp(randomBetween(
+      Math.max(54, base.s - 12),
+      Math.min(96, base.s + 24),
+    ), 50, 96);
+    const lightness = clamp(randomBetween(24, 76), 18, 82);
+    const candidate = nudgeToContrast(hslToHex(hue, saturation, lightness), background, 3);
+    const ratio = contrast(candidate, background);
+
+    if (ratio < 3) continue;
+
+    const score = scoreCompanionCandidate(candidate, background, existingColors);
+    if (!best || score > best.score) {
+      best = { color: candidate, score };
+    }
+  }
+
+  return best?.color || buildCompanionColor(seed, background, index);
+}
+
+function scoreCompanionCandidate(candidate, background, existingColors) {
+  const hsl = hexToHsl(candidate);
+  const ratio = contrast(candidate, background);
+  const nearestHue = Math.min(
+    ...existingColors.map((color) => hueDistance(hsl.h, hexToHsl(color).h)),
+  );
+  const nearestLightness = Math.min(
+    ...existingColors.map((color) => Math.abs(hsl.l - hexToHsl(color).l)),
+  );
+  const contrastScore = ratio >= 4.5 ? 12 : 6;
+  const hueScore = Math.min(nearestHue, 120) / 120;
+  const saturationScore = hsl.s / 100;
+  const lightnessScore = Math.min(nearestLightness, 24) / 24;
+
+  return contrastScore + hueScore * 8 + saturationScore * 3 + lightnessScore * 2;
 }
 
 function nudgeToContrast(color, background, target) {
@@ -676,6 +758,15 @@ function nudgeToContrast(color, background, target) {
 
 function wrapHue(value) {
   return ((value % 360) + 360) % 360;
+}
+
+function hueDistance(first, second) {
+  const distance = Math.abs(first - second) % 360;
+  return Math.min(distance, 360 - distance);
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
 }
 
 function clamp(value, min, max) {
