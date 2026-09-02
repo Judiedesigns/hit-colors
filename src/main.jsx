@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import chroma from 'chroma-js';
 import hello from 'hello-color';
-import { Shuffle } from 'lucide-react';
+import { ArrowUpDown, Shuffle } from 'lucide-react';
 import readme from '../README.md?raw';
 import {
   badgeLabel,
@@ -100,6 +100,7 @@ function HitColorsTool() {
   const [actionHistory, setActionHistory] = useState([]);
   const [saved, setSaved] = useState(loadSavedSystems);
   const [mobileTab, setMobileTab] = useState('fg');
+  const [mobileEditor, setMobileEditor] = useState(null);
   const foreground = palette[selectedColor] || palette[0];
   const displayForeground = safeHex(foreground);
   const displayBackground = safeHex(background);
@@ -118,6 +119,11 @@ function HitColorsTool() {
 
   const activateBackground = () => {
     setMobileTab('bg');
+  };
+
+  const openMobileEditor = (nextTab) => {
+    setMobileTab(nextTab);
+    setMobileEditor(nextTab);
   };
 
   const saveActionHistory = () => {
@@ -240,7 +246,10 @@ function HitColorsTool() {
       <div className="contrast-layout">
         <section
           className="contrast-preview"
-          style={{ color: displayForeground, backgroundColor: displayBackground }}
+          style={{
+            color: displayForeground,
+            backgroundColor: displayBackground,
+          }}
         >
           <div className="contrast-score">
             <span>Aa</span>
@@ -270,6 +279,40 @@ function HitColorsTool() {
             </h1>
             <p>WCAG contrast for text and accent colors.</p>
           </div>
+          <div className="mobile-editor-bar" aria-label="Mobile contrast controls">
+            <button
+              type="button"
+              className={`mobile-editor-swatch ${mobileTab === 'fg' ? 'active' : ''}`}
+              style={{ backgroundColor: displayForeground }}
+              onClick={() => openMobileEditor('fg')}
+              aria-label={`Edit ${selectedColor === 0 ? 'text' : `accent ${selectedColor}`} color`}
+            />
+            <button
+              type="button"
+              className="mobile-editor-swap"
+              onClick={reverse}
+              aria-label="Swap text and background colors"
+              title="Swap text and background colors"
+            >
+              <ArrowUpDown aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={`mobile-editor-swatch mobile-editor-background ${mobileTab === 'bg' ? 'active' : ''}`}
+              style={{ backgroundColor: displayBackground }}
+              onClick={() => openMobileEditor('bg')}
+              aria-label="Edit background color"
+            />
+            <button
+              type="button"
+              className="mobile-editor-random"
+              onClick={random}
+              aria-label="Randomize contrast pair"
+              title="Randomize contrast pair"
+            >
+              <Shuffle aria-hidden="true" />
+            </button>
+          </div>
           <div className={`mobile-tabs ${mobileTab === 'bg' ? 'is-background' : 'is-foreground'}`}>
             <button
               type="button"
@@ -296,6 +339,7 @@ function HitColorsTool() {
             onChange={(value) => updatePaletteColor(selectedColor, value)}
             onActivate={activateForeground}
             hiddenOnMobile={mobileTab !== 'fg'}
+            idPrefix="desktop"
           />
           <HitColorControl
             label="Background"
@@ -303,7 +347,31 @@ function HitColorsTool() {
             onChange={setBackground}
             onActivate={activateBackground}
             hiddenOnMobile={mobileTab !== 'bg'}
+            idPrefix="desktop"
           />
+          {mobileEditor && (
+            <div className="mobile-editor-overlay" role="dialog" aria-modal="true">
+              <button
+                type="button"
+                className="mobile-editor-backdrop"
+                onClick={() => setMobileEditor(null)}
+                aria-label="Close color editor"
+              />
+              <div className="mobile-editor-sheet">
+                <div className="mobile-editor-sheet-head">
+                  <span>{mobileEditor === 'fg' ? (selectedColor === 0 ? 'Text' : `Accent ${selectedColor}`) : 'Background'}</span>
+                  <button type="button" onClick={() => setMobileEditor(null)}>Done</button>
+                </div>
+                <HitColorControl
+                  label={mobileEditor === 'fg' ? (selectedColor === 0 ? 'Text' : `Accent ${selectedColor}`) : 'Background'}
+                  value={mobileEditor === 'fg' ? foreground : background}
+                  onChange={mobileEditor === 'fg' ? (value) => updatePaletteColor(selectedColor, value) : setBackground}
+                  onActivate={mobileEditor === 'fg' ? activateForeground : activateBackground}
+                  idPrefix="mobile"
+                />
+              </div>
+            </div>
+          )}
           <div className="panel-actions">
             <button type="button" onClick={reverse}>Reverse</button>
             <div className="random-group">
@@ -492,10 +560,11 @@ function HitColorsTool() {
   );
 }
 
-function HitColorControl({ label, value, onChange, onActivate, hiddenOnMobile }) {
+function HitColorControl({ label, value, onChange, onActivate, hiddenOnMobile, idPrefix = 'control' }) {
   const normalized = safeHex(value);
   const hsl = hexToHsl(normalized);
   const canUseEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
+  const inputId = `${idPrefix}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tool-hex`;
 
   const updateHsl = (key, nextValue) => {
     onActivate?.();
@@ -521,7 +590,7 @@ function HitColorControl({ label, value, onChange, onActivate, hiddenOnMobile })
       data-mobile-hidden={hiddenOnMobile ? 'true' : undefined}
     >
       <div className="panel-control-head">
-        <label htmlFor={`${label}-tool-hex`}>{label}</label>
+        <label htmlFor={inputId}>{label}</label>
         <div className="control-field-row">
           <div className="control-field">
             <span className="control-swatch" style={{ backgroundColor: normalized }}>
@@ -536,7 +605,7 @@ function HitColorControl({ label, value, onChange, onActivate, hiddenOnMobile })
               />
             </span>
             <HexTextInput
-              id={`${label}-tool-hex`}
+              id={inputId}
               value={formatHex(value)}
               autoComplete="off"
               autoCorrect="off"
@@ -632,12 +701,6 @@ function parseInitialColors() {
     palette: ['#14DCEB', '#F585FF', '#FFC800'],
     background: '#004466',
   };
-}
-
-function randomHex() {
-  return `#${Math.floor(Math.random() * 0xffffff)
-    .toString(16)
-    .padStart(6, '0')}`.toUpperCase();
 }
 
 function randomPassingPair() {
