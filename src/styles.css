@@ -1195,6 +1195,13 @@ input[type="range"] {
 }
 
 @media (max-width: 40rem) {
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .container {
     padding-right: 1rem;
     padding-left: 1rem;
@@ -1221,15 +1228,20 @@ input[type="range"] {
   }
 
   .contrast-layout {
+    width: 100%;
+    max-width: 100%;
     height: auto;
     min-height: calc(100vh - 52px);
     grid-template-columns: 1fr;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   .contrast-preview {
     grid-column: 1;
     grid-row: 2;
+    min-width: 0;
+    max-width: 100%;
     min-height: 330px;
     padding: 36px 30px 46px;
     display: flex;
@@ -1298,6 +1310,8 @@ input[type="range"] {
   .mobile-editor-bar {
     position: relative;
     grid-row: 3;
+    min-width: 0;
+    max-width: 100%;
     display: grid;
     grid-template-columns: auto auto auto minmax(0, 1fr) auto;
     align-items: center;
@@ -1403,6 +1417,8 @@ input[type="range"] {
 
   .palette-panel {
     grid-row: 5;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .palette-actions .palette-shuffle {
@@ -1411,10 +1427,14 @@ input[type="range"] {
 
   .saved-panel {
     grid-row: 6;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .maker-panel {
     grid-row: 7;
+    min-width: 0;
+    max-width: 100%;
     padding: 14px 22px calc(22px + env(safe-area-inset-bottom));
   }
 
