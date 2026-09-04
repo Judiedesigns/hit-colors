@@ -438,7 +438,7 @@ function HitColorsTool() {
 
                 return (
                   <div
-                    className={`palette-row ${index === selectedColor ? 'selected' : ''}`}
+                    className={`palette-row ${index === selectedColor ? 'selected' : ''} ${canFix ? 'can-fix' : ''}`}
                     key={`companion-${index}`}
                     onClick={() => {
                       setSelectedColor(index);

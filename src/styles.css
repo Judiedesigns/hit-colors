@@ -1436,15 +1436,28 @@ input[type="range"] {
     grid-template-columns: minmax(0, 1fr) 54px;
   }
 
+  .palette-row.selected.can-fix {
+    grid-template-columns: minmax(0, 1fr) 54px 42px;
+  }
+
   .palette-row input {
     pointer-events: none;
     caret-color: transparent;
     cursor: default;
   }
 
-  .palette-row .palette-fix,
   .palette-row .palette-remove {
     display: none;
+  }
+
+  .palette-row .palette-fix {
+    display: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .palette-row.selected.can-fix .palette-fix:not(:disabled) {
+    display: inline-flex;
   }
 
   .palette-actions .palette-shuffle {
