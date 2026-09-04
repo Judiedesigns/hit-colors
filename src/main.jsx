@@ -112,6 +112,13 @@ function HitColorsTool() {
     ? '#0e1012'
     : '#e8e9ea';
 
+  useEffect(() => {
+    const nextHash = `#${displayForeground.slice(1)}/${displayBackground.slice(1)}`;
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, '', `/${nextHash}`);
+    }
+  }, [displayForeground, displayBackground]);
+
   const activateForeground = () => {
     setMobileTab('fg');
   };
@@ -687,10 +694,16 @@ function HexTextInput({ value, onChange, onFocus, onBlur, ...props }) {
 }
 
 function parseInitialColors() {
-  const parts = window.location.pathname
+  const hashParts = window.location.hash
+    .replace(/^#\/?/, '')
     .split('/')
     .filter(Boolean)
     .map((part) => normalizeHex(part));
+  const pathParts = window.location.pathname
+    .split('/')
+    .filter(Boolean)
+    .map((part) => normalizeHex(part));
+  const parts = hashParts.length >= 2 ? hashParts : pathParts;
 
   if (parts.length >= 2 && isValidHex(parts[0]) && isValidHex(parts[1])) {
     return {
