@@ -11,7 +11,6 @@ import {
   hslToHex,
   isValidHex,
   normalizeHex,
-  rgbToHex,
 } from './color-utils';
 import './styles.css';
 
@@ -101,7 +100,6 @@ function HitColorsTool() {
   const [saved, setSaved] = useState(loadSavedSystems);
   const [mobileTab, setMobileTab] = useState('fg');
   const [mobileEditor, setMobileEditor] = useState(null);
-  const [randomHistory, setRandomHistory] = useState([]);
   const foreground = palette[selectedColor] || palette[0];
   const displayForeground = safeHex(foreground);
   const displayBackground = safeHex(background);
@@ -143,9 +141,8 @@ function HitColorsTool() {
   };
 
   const random = () => {
-    const next = randomPassingPair(randomHistory);
+    const next = randomPassingPair();
     saveActionHistory();
-    setRandomHistory((history) => [colorPairFamily(next), ...history].slice(0, 6));
     setPalette((colors) => buildCompanionPalette(
       next.foreground,
       next.background,
@@ -708,112 +705,32 @@ function parseInitialColors() {
   };
 }
 
-function randomPassingPair(recentFamilies = []) {
-  const candidates = [];
+function randomHex() {
+  return `#${Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padStart(6, '0')}`.toUpperCase();
+}
 
-  for (let index = 0; index < 180; index += 1) {
-    const candidate = buildRandomPair();
-    const ratio = contrast(candidate.foreground, candidate.background);
-
-    if (ratio < 4.5) continue;
-
-    candidates.push({
-      ...candidate,
-      score: scoreRandomPair(candidate, recentFamilies),
-    });
+function randomPassingPair() {
+  for (let index = 0; index < 160; index += 1) {
+    const foreground = randomHex();
+    const background = randomHex();
+    if (contrast(foreground, background) >= 4.5) {
+      return { foreground, background };
+    }
   }
 
-  if (candidates.length) {
-    const shortlist = candidates
-      .sort((first, second) => second.score - first.score)
-      .slice(0, 16);
-    const picked = shortlist[Math.floor(Math.random() * shortlist.length)];
+  const background = randomHex();
+  const result = hello(background, { contrast: 4.5 });
+  const foreground = result?.color ? normalizeHex(result.color) : null;
 
-    return {
-      foreground: picked.foreground,
-      background: picked.background,
-    };
+  if (foreground && contrast(foreground, background) >= 4.5) {
+    return { foreground, background };
   }
 
   return Math.random() > 0.5
     ? { foreground: '#111111', background: '#FFFFFF' }
     : { foreground: '#FFFFFF', background: '#111111' };
-}
-
-function buildRandomPair() {
-  const background = randomColor();
-  const backgroundHsl = hexToHsl(background);
-  const foreground = randomReadableColor(background);
-
-  if (contrast(foreground, background) >= 4.5) {
-    return { foreground, background };
-  }
-
-  const fallback = hello(background, { contrast: 4.5 });
-  return {
-    foreground: fallback?.color ? normalizeHex(fallback.color) : (backgroundHsl.l > 50 ? '#111111' : '#FFFFFF'),
-    background,
-  };
-}
-
-function randomColor() {
-  const mode = Math.floor(Math.random() * 5);
-
-  if (mode === 0) {
-    return rgbToHex(
-      randomBetween(0, 255),
-      randomBetween(0, 255),
-      randomBetween(0, 255),
-    );
-  }
-
-  const hue = randomBetween(0, 360);
-  const ranges = [
-    { saturation: [8, 36], lightness: [12, 88] },
-    { saturation: [38, 76], lightness: [8, 92] },
-    { saturation: [76, 100], lightness: [8, 92] },
-    { saturation: [0, 100], lightness: [0, 100] },
-  ][mode - 1];
-
-  return hslToHex(hue, randomBetween(...ranges.saturation), randomBetween(...ranges.lightness));
-}
-
-function randomReadableColor(background) {
-  const backgroundHsl = hexToHsl(background);
-
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    const foreground = randomColor();
-    if (contrast(foreground, background) >= 4.5) return foreground;
-  }
-
-  const targetLightness = backgroundHsl.l > 50
-    ? randomBetween(0, 28)
-    : randomBetween(72, 100);
-  const candidate = hslToHex(randomBetween(0, 360), randomBetween(0, 100), targetLightness);
-
-  return nudgeToContrast(candidate, background, 4.5);
-}
-
-function scoreRandomPair(pair, recentFamilies) {
-  const family = colorPairFamily(pair);
-  const background = hexToHsl(pair.background);
-  const foreground = hexToHsl(pair.foreground);
-  const repeatedPenalty = recentFamilies.includes(family) ? 18 : 0;
-  const contrastScore = Math.min(contrast(pair.foreground, pair.background), 9) * 2;
-  const hueDistanceScore = Math.min(hueDistance(background.h, foreground.h), 150) / 150 * 10;
-  const colorfulnessScore = (background.s + foreground.s) / 200 * 8;
-
-  return contrastScore + hueDistanceScore + colorfulnessScore - repeatedPenalty;
-}
-
-function colorPairFamily(pair) {
-  const background = hexToHsl(pair.background);
-  const foreground = hexToHsl(pair.foreground);
-  const hueBand = Math.floor(background.h / 45);
-  const lightBand = background.l < 35 ? 'dark' : background.l > 68 ? 'light' : 'mid';
-  const relationship = hueDistance(background.h, foreground.h) > 120 ? 'wide' : 'near';
-
-  return `${hueBand}:${lightBand}:${relationship}`;
 }
 
 function contrastDescription(ratio) {
