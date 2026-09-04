@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import chroma from 'chroma-js';
 import hello from 'hello-color';
 import { ArrowUpDown, Shuffle } from 'lucide-react';
 import readme from '../README.md?raw';
@@ -101,6 +100,7 @@ function HitColorsTool() {
   const [saved, setSaved] = useState(loadSavedSystems);
   const [mobileTab, setMobileTab] = useState('fg');
   const [mobileEditor, setMobileEditor] = useState(null);
+  const [randomHistory, setRandomHistory] = useState([]);
   const foreground = palette[selectedColor] || palette[0];
   const displayForeground = safeHex(foreground);
   const displayBackground = safeHex(background);
@@ -142,8 +142,9 @@ function HitColorsTool() {
   };
 
   const random = () => {
-    const next = randomPassingPair();
+    const next = randomPassingPair(randomHistory);
     saveActionHistory();
+    setRandomHistory((history) => [colorPairFamily(next), ...history].slice(0, 6));
     setPalette((colors) => buildCompanionPalette(
       next.foreground,
       next.background,
@@ -519,7 +520,9 @@ function HitColorsTool() {
                     title={`Use saved system ${index + 1}`}
                     onClick={() => loadSavedSystem(system)}
                     aria-label={`Use saved color system ${index + 1}`}
-                  />
+                  >
+                    <span style={{ backgroundColor: system.palette[0] }} />
+                  </button>
                   <button
                     type="button"
                     className="saved-remove"
@@ -703,20 +706,94 @@ function parseInitialColors() {
   };
 }
 
-function randomPassingPair() {
-  for (let index = 0; index < 80; index += 1) {
-    const background = chroma.random().hex().toUpperCase();
-    const result = hello(background, { contrast: 4.5 });
-    const foreground = result?.color ? normalizeHex(result.color) : null;
+function randomPassingPair(recentFamilies = []) {
+  let best = null;
 
-    if (foreground && contrast(foreground, background) >= 4.5) {
-      return { foreground, background };
+  for (let index = 0; index < 120; index += 1) {
+    const candidate = buildRandomPair(index);
+    const ratio = contrast(candidate.foreground, candidate.background);
+
+    if (ratio < 4.5) continue;
+
+    const score = scoreRandomPair(candidate, recentFamilies);
+    if (!best || score > best.score) {
+      best = { ...candidate, score };
     }
+  }
+
+  if (best) {
+    return {
+      foreground: best.foreground,
+      background: best.background,
+    };
   }
 
   return Math.random() > 0.5
     ? { foreground: '#111111', background: '#FFFFFF' }
     : { foreground: '#FFFFFF', background: '#111111' };
+}
+
+function buildRandomPair(attempt) {
+  const background = randomExpressiveColor(attempt);
+  const backgroundHsl = hexToHsl(background);
+  const offsets = [0, 30, -40, 75, -95, 140, -150, 180];
+  const targetHue = wrapHue(backgroundHsl.h + offsets[attempt % offsets.length] + randomBetween(-18, 18));
+  const targetSaturation = clamp(randomBetween(50, 96), 46, 98);
+  const lightDirection = backgroundHsl.l > 52 ? -1 : 1;
+  const targetLightness = lightDirection > 0
+    ? randomBetween(68, 96)
+    : randomBetween(5, 34);
+  const expressiveForeground = hslToHex(targetHue, targetSaturation, targetLightness);
+  const foreground = nudgeToContrast(expressiveForeground, background, 4.5);
+
+  if (contrast(foreground, background) >= 4.5) {
+    return { foreground, background };
+  }
+
+  const fallback = hello(background, { contrast: 4.5 });
+  return {
+    foreground: fallback?.color ? normalizeHex(fallback.color) : (backgroundHsl.l > 50 ? '#111111' : '#FFFFFF'),
+    background,
+  };
+}
+
+function randomExpressiveColor(attempt) {
+  const hue = wrapHue(randomBetween(0, 360));
+  const families = [
+    { saturation: [58, 94], lightness: [12, 30] },
+    { saturation: [54, 96], lightness: [32, 50] },
+    { saturation: [48, 90], lightness: [52, 70] },
+    { saturation: [38, 82], lightness: [72, 90] },
+  ];
+  const family = families[attempt % families.length];
+
+  return hslToHex(
+    hue,
+    randomBetween(...family.saturation),
+    randomBetween(...family.lightness),
+  );
+}
+
+function scoreRandomPair(pair, recentFamilies) {
+  const family = colorPairFamily(pair);
+  const background = hexToHsl(pair.background);
+  const foreground = hexToHsl(pair.foreground);
+  const repeatedPenalty = recentFamilies.includes(family) ? 18 : 0;
+  const contrastScore = Math.min(contrast(pair.foreground, pair.background), 9) * 2;
+  const hueDistanceScore = Math.min(hueDistance(background.h, foreground.h), 150) / 150 * 10;
+  const colorfulnessScore = (background.s + foreground.s) / 200 * 8;
+
+  return contrastScore + hueDistanceScore + colorfulnessScore - repeatedPenalty;
+}
+
+function colorPairFamily(pair) {
+  const background = hexToHsl(pair.background);
+  const foreground = hexToHsl(pair.foreground);
+  const hueBand = Math.floor(background.h / 45);
+  const lightBand = background.l < 35 ? 'dark' : background.l > 68 ? 'light' : 'mid';
+  const relationship = hueDistance(background.h, foreground.h) > 120 ? 'wide' : 'near';
+
+  return `${hueBand}:${lightBand}:${relationship}`;
 }
 
 function contrastDescription(ratio) {

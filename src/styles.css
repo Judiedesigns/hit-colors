@@ -962,6 +962,7 @@ pre {
 }
 
 .saved-swatch {
+  position: relative;
   width: 100%;
   height: 100%;
   padding: 0;
@@ -970,6 +971,16 @@ pre {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
   cursor: pointer;
   transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.saved-swatch span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(14, 16, 18, .62);
 }
 
 .saved-swatch:hover,
@@ -1421,6 +1432,12 @@ input[type="range"] {
     max-width: 100%;
   }
 
+  .palette-row input {
+    pointer-events: none;
+    caret-color: transparent;
+    cursor: default;
+  }
+
   .palette-actions .palette-shuffle {
     display: none;
   }
@@ -1435,7 +1452,7 @@ input[type="range"] {
     grid-row: 7;
     min-width: 0;
     max-width: 100%;
-    padding: 14px 22px calc(22px + env(safe-area-inset-bottom));
+    padding: 14px 22px calc(30px + env(safe-area-inset-bottom));
   }
 
   .contrast-panel > .panel-control,
