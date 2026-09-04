@@ -1432,10 +1432,19 @@ input[type="range"] {
     max-width: 100%;
   }
 
+  .palette-row {
+    grid-template-columns: minmax(0, 1fr) 54px;
+  }
+
   .palette-row input {
     pointer-events: none;
     caret-color: transparent;
     cursor: default;
+  }
+
+  .palette-row .palette-fix,
+  .palette-row .palette-remove {
+    display: none;
   }
 
   .palette-actions .palette-shuffle {

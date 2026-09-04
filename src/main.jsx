@@ -440,14 +440,12 @@ function HitColorsTool() {
                   <div
                     className={`palette-row ${index === selectedColor ? 'selected' : ''}`}
                     key={`companion-${index}`}
+                    onClick={() => {
+                      setSelectedColor(index);
+                      activateForeground();
+                    }}
                   >
-                    <div
-                      className="palette-select"
-                      onClick={() => {
-                        setSelectedColor(index);
-                        activateForeground();
-                      }}
-                    >
+                    <div className="palette-select">
                       <span style={{ backgroundColor: safeHex(color) }} />
                       <HexTextInput
                         value={formatHex(color)}
@@ -480,7 +478,10 @@ function HitColorsTool() {
                     <button
                       type="button"
                       className="palette-remove"
-                      onClick={() => removeCompanionColor(index)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeCompanionColor(index);
+                      }}
                       disabled={index === 0}
                       aria-label={`Remove accent ${index}`}
                     >
